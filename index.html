@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AVL Tree Visualizer</title>
+  <meta name="description" content="Interactive AVL Tree visualizer — insertion, deletion, all 4 rotations (LL/RR/LR/RL), balance factors, traversals."/>
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+
+<div class="app-shell">
+
+  <!-- ╔══════════════════════════════╗ -->
+  <!-- ║           HEADER             ║ -->
+  <!-- ╚══════════════════════════════╝ -->
+  <header class="app-header">
+    <div class="header-brand">
+      <div class="brand-icon">🌳</div>
+      <div>
+        <div class="brand-title">AVL Tree Visualizer</div>
+        <div class="brand-sub">Self-Balancing BST · All 4 Rotations · Traversals</div>
+      </div>
+    </div>
+
+    <div id="rotation-badge" class="rotation-badge empty">No rotations yet</div>
+
+    <div class="header-actions">
+      <button class="btn btn-ghost btn-sm" id="btn-fit" title="Fit tree to screen">⊞ Fit</button>
+      <button class="btn btn-danger btn-sm" id="btn-reset">↺ Reset</button>
+    </div>
+  </header>
+
+  <!-- ╔══════════════════════════════╗ -->
+  <!-- ║          LEFT PANEL          ║ -->
+  <!-- ╚══════════════════════════════╝ -->
+  <aside class="panel panel-left">
+
+    <!-- Insert / Delete / Search -->
+    <div class="panel-section">
+      <div class="section-title">⚡ Operations</div>
+      <div class="input-row" style="margin-bottom:10px">
+        <input type="number" id="input-value" placeholder="Enter value…" min="-999" max="999"/>
+      </div>
+      <div class="action-grid">
+        <button class="btn btn-primary" id="btn-insert">➕ Insert</button>
+        <button class="btn btn-danger"  id="btn-delete">🗑️ Delete</button>
+        <button class="btn btn-success" id="btn-search" style="grid-column:1/-1">🔍 Search</button>
+      </div>
+    </div>
+
+    <!-- Presets -->
+    <div class="panel-section">
+      <div class="section-title">📦 Preset Sequences</div>
+      <div id="presets-container"></div>
+    </div>
+
+    <!-- Tree Stats -->
+    <div class="panel-section">
+      <div class="section-title">📊 Tree Stats</div>
+      <div class="stat-grid">
+        <div class="stat-card">
+          <div class="stat-val" id="stat-nodes">0</div>
+          <div class="stat-label">Nodes</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val" id="stat-height">0</div>
+          <div class="stat-label">Height</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val" id="stat-leaves">0</div>
+          <div class="stat-label">Leaves</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val" id="stat-balanced">—</div>
+          <div class="stat-label">Balanced?</div>
+        </div>
+      </div>
+
+      <!-- BF meter -->
+      <div style="margin-top:12px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+          <span style="font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--text-dim)">Max |BF|</span>
+          <span id="stat-maxbf" style="font-size:12px;font-family:'Fira Code',monospace;color:var(--accent-bright)">0</span>
+        </div>
+        <div class="bf-meter-track"><div id="bf-meter"></div></div>
+        <div class="bf-meter-labels"><span>0 (Balanced)</span><span>≥2 (Broken)</span></div>
+      </div>
+    </div>
+
+    <!-- Node Legend -->
+    <div class="panel-section">
+      <div class="section-title">🔑 Legend</div>
+      <div class="legend">
+        <div class="legend-item">
+          <div class="legend-dot" style="background:linear-gradient(135deg,#f59e0b,#78350f)"></div>
+          <span>Root node</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-dot" style="background:linear-gradient(135deg,#7c3aed,#4c1d95)"></div>
+          <span>Normal node</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-dot" style="background:linear-gradient(135deg,#ef4444,#7f1d1d)"></div>
+          <span>Imbalanced (|BF|&gt;1)</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-dot" style="background:linear-gradient(135deg,#10b981,#064e3b)"></div>
+          <span>Highlighted / found</span>
+        </div>
+        <div style="margin-top:4px;font-size:10px;color:var(--text-dim)">
+          Top-left badge = height &nbsp;|&nbsp; Top-right badge = BF
+        </div>
+        <div style="font-size:10px;color:var(--text-dim)">
+          BF = left height − right height
+        </div>
+      </div>
+    </div>
+
+  </aside>
+
+  <!-- ╔══════════════════════════════╗ -->
+  <!-- ║        SVG CANVAS            ║ -->
+  <!-- ╚══════════════════════════════╝ -->
+  <main class="canvas-area">
+    <svg id="main-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+
+    <!-- Corner legend -->
+    <div class="canvas-legend">
+      <div class="legend-item">
+        <div class="legend-dot" style="background:#10b981;width:10px;height:10px"></div>
+        <span style="color:#6ee7b7">BF = 0</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-dot" style="background:#f59e0b;width:10px;height:10px"></div>
+        <span style="color:#fde68a">|BF| = 1</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-dot" style="background:#ef4444;width:10px;height:10px"></div>
+        <span style="color:#fca5a5">|BF| ≥ 2</span>
+      </div>
+    </div>
+
+    <div class="canvas-hint">Alt+drag to pan &nbsp;·&nbsp; Scroll to zoom &nbsp;·&nbsp; Hover node for info</div>
+  </main>
+
+  <!-- ╔══════════════════════════════╗ -->
+  <!-- ║         RIGHT PANEL          ║ -->
+  <!-- ╚══════════════════════════════╝ -->
+  <aside class="panel panel-right">
+
+    <!-- Tabs -->
+    <div class="tab-bar">
+      <button class="tab-btn active" data-tab="tab-log">Log</button>
+      <button class="tab-btn" data-tab="tab-traversals">Traversals</button>
+      <button class="tab-btn" data-tab="tab-rotations">Rotations</button>
+    </div>
+
+    <!-- ── Tab: Step Log ── -->
+    <div id="tab-log" class="tab-panel active">
+      <div class="panel-section" style="padding:10px">
+        <div class="section-title">📋 Step Log</div>
+        <div id="step-log"></div>
+      </div>
+    </div>
+
+    <!-- ── Tab: Traversals ── -->
+    <div id="tab-traversals" class="tab-panel">
+      <div class="panel-section">
+        <div class="section-title">🚀 Animate Traversal</div>
+        <div class="trav-btns">
+          <button id="btn-inorder">In-order</button>
+          <button id="btn-preorder">Pre-order</button>
+          <button id="btn-postorder">Post-order</button>
+          <button id="btn-levelorder">Level-order</button>
+        </div>
+
+        <hr class="divider"/>
+        <div style="margin-top:12px;display:flex;flex-direction:column;gap:10px">
+
+          <div class="traversal-row">
+            <div class="trav-label">📗 In-order (L–Root–R) — sorted output</div>
+            <div class="trav-val" id="trav-inorder">—</div>
+          </div>
+
+          <div class="traversal-row">
+            <div class="trav-label">📘 Pre-order (Root–L–R) — clone structure</div>
+            <div class="trav-val" id="trav-preorder">—</div>
+          </div>
+
+          <div class="traversal-row">
+            <div class="trav-label">📙 Post-order (L–R–Root) — delete order</div>
+            <div class="trav-val" id="trav-postorder">—</div>
+          </div>
+
+          <div class="traversal-row">
+            <div class="trav-label">📕 Level-order (BFS) — breadth first</div>
+            <div class="trav-val" id="trav-levelorder">—</div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Tab: Rotations ── -->
+    <div id="tab-rotations" class="tab-panel">
+      <div class="panel-section">
+        <div class="section-title">🔄 Rotation Reference</div>
+        <div class="rotation-info">
+          <div class="rot-info-card ll">
+            <strong>↻ LL Case</strong>
+            BF = +2 on node, left child BF ≥ 0<br/>
+            Fix: Single <em>right rotation</em>
+          </div>
+          <div class="rot-info-card rr">
+            <strong>↺ RR Case</strong>
+            BF = −2 on node, right child BF ≤ 0<br/>
+            Fix: Single <em>left rotation</em>
+          </div>
+          <div class="rot-info-card lr">
+            <strong>↺↻ LR Case</strong>
+            BF = +2 on node, left child BF &lt; 0<br/>
+            Fix: Left rotate child, then right rotate
+          </div>
+          <div class="rot-info-card rl">
+            <strong>↻↺ RL Case</strong>
+            BF = −2 on node, right child BF &gt; 0<br/>
+            Fix: Right rotate child, then left rotate
+          </div>
+        </div>
+      </div>
+
+      <div class="panel-section" style="margin-top:0">
+        <div class="section-title">📜 Rotation History</div>
+        <div id="rotation-history" style="min-height:24px;display:flex;flex-wrap:wrap;gap:4px">
+          <span style="color:var(--text-dim);font-size:11px">None yet</span>
+        </div>
+
+        <div style="margin-top:12px">
+          <div class="section-title" style="margin-bottom:6px">Avg BF</div>
+          <span id="stat-avgbf" style="font-family:'Fira Code',monospace;font-size:20px;color:var(--accent-bright)">0</span>
+          <span style="font-size:11px;color:var(--text-dim);margin-left:4px">across all nodes</span>
+        </div>
+      </div>
+
+      <div class="panel-section" style="margin-top:0">
+        <div class="section-title">📐 BF Formula</div>
+        <div style="font-family:'Fira Code',monospace;font-size:12px;color:var(--cyan);
+                    background:rgba(6,182,212,0.06);border:1px solid rgba(6,182,212,0.2);
+                    border-radius:8px;padding:10px;line-height:2">
+          BF(node) = Height(Left) − Height(Right)<br/>
+          <span style="color:var(--text-dim)">AVL property: |BF(node)| ≤ 1 for all nodes</span><br/>
+          <span style="color:var(--text-dim)">Height update after every insert/delete</span>
+        </div>
+      </div>
+    </div>
+
+  </aside>
+
+</div><!-- end .app-shell -->
+
+<script src="avl.js"></script>
+<script src="visualizer.js"></script>
+<script src="ui.js"></script>
+<script>
+  // ── Bootstrap ─────────────────────────────────────────────────
+  (function () {
+    const tree = new AVLTree();
+    const viz  = new Visualizer('main-svg', tree);
+    const ui   = new UI(tree, viz);
+
+    // Expose globally for debugging
+    window._avl = { tree, viz, ui };
+  })();
+</script>
+</body>
+</html>
